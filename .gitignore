@@ -218,3 +218,26 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# 密钥：模板只挡 .env，挡不住 key.env / mysql.env
+**/key.env
+**/mysql.env
+**/*.env
+!**/*.env.example
+!**/mysql.env.example
+
+allagent2/rag/models/
+**/chroma_db/
+**/memory_index/
+**/docs_index/
+**/milvus_demo.db/
+uploads/
+*.orig
+*.orig.*
+
+attic/
+scratch/
+.git-rewrite/
+
+server_*.log
+output/
