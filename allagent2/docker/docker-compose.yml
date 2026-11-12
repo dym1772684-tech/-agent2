@@ -1,0 +1,55 @@
+# 养老智能体后端 —— 本地一键起（app + mysql + redis）
+# 构建并启动： docker compose up --build
+# 仅启动已有镜像： docker compose up
+#
+# 拉取已发布镜像（GHCR）时，把下面 app 服务的 `build: .` 整段删除，
+# 改成： image: ghcr.io/<用户名>/<仓库名>:latest
+services:
+  mysql:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    ports:
+      - "3306:3306"   # 本地调试用；生产环境建议删掉这行
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    ports:
+      - "6379:6379"   # 本地调试用；生产环境建议删掉这行
+
+  app:
+    build: .
+    # 拉取发布镜像时改用： image: ghcr.io/<用户名>/<仓库名>:latest
+    env_file:
+      - .env
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - chroma_data:/data/chroma                 # Chroma 向量落盘（持久化）
+      - hf_cache:/root/.cache/huggingface        # HF 模型缓存（首次下载后复用）
+    ports:
+      - "8000:8000"   # 主 API
+      - "8001:8001"   # elder MCP
+      - "8002:8002"   # life MCP
+
+volumes:
+  mysql_data:
+  chroma_data:
+  hf_cache:

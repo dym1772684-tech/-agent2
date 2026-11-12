@@ -1,0 +1,25 @@
+{
+  "summary": {
+    "normal": {
+      "pass": 0,
+      "fail": 1,
+      "fails": [
+        "N01"
+      ]
+    }
+  },
+  "results": [
+    {
+      "id": "N01",
+      "category": "normal",
+      "status": "FAIL",
+      "reasons": [
+        "异常:APIStatusError: Error code: 402 - {'error': {'message': 'Insufficient Balance (request_id: 199760ec-4766-49fd-b48a-2df3b66cae4f)', 'type': 'unknown_error', 'param': None, 'code': 'invalid_request_error'}}",
+        "空回答",
+        "未命中关键词(任一):['5.6']"
+      ],
+      "elapsed": 0.5,
+      "answer": ""
+    }
+  ]
+}

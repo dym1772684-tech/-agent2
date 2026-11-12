@@ -1,0 +1,54 @@
+# ============================================================
+# 养老智能体 集成依赖清单（fastap2 + allagent2 串联后所需）
+# 安装： E:\python\python.exe -m pip install -r requirements.txt
+# ============================================================
+
+# ---- FastAPI / Web 层 ----
+fastapi
+uvicorn[standard]
+python-multipart          # OAuth2PasswordRequestForm 表单解析需要
+
+# ---- 数据库 ----
+sqlalchemy
+aiomysql                  # FastAPI 异步连接 MySQL
+pymysql                   # Agent 后端工具的同步连接（aiomysql 也依赖它）
+
+# ---- 鉴权 / 配置 / 数据校验 ----
+pydantic
+pyjwt                     # import jwt
+passlib                   # 密码哈希
+bcrypt
+python-dotenv             # import dotenv，加载 .env
+
+# ---- LangChain / LangGraph 全家桶（Agent 大脑）----
+langchain
+langchain-core
+langchain-community
+langgraph
+# 【必须】ChatOpenAI 的 provider 实现单独成包：只装 langchain 会在
+# init_chat_model 时抛 "Initializing ChatOpenAI requires the langchain-openai package"
+langchain-openai
+langchain-deepseek       # 直连 deepseek 时用（当前走 OpenAI 兼容协议，装它是为了 provider 兜底）
+openai                    # deepseek 走 OpenAI 兼容接口
+
+# ---- 文档解析（core/file_parser.py 上传链路 + allagent2/ingestion 摄取链路）----
+# 这两条链路都按需延迟导入，缺包时上传会 400/摄取会降级——不是"能跑就行"的可选项
+pypdf                     # PDF 文本层（file_parser）
+pymupdf                   # fitz：PDF 版面重建/字体聚类（ingestion/parsers/pdf.py）
+pdfplumber                # PDF 几何表格提取（ingestion/parsers/table.py，缺装则表格退化成文本行）
+python-docx               # .docx（import docx）
+openpyxl                  # .xlsx
+# rapidocr-onnxruntime    # 扫描件 OCR（ingestion/ocr.py 探测式启用，体积大，按需打开）
+
+# ---- RAG 检索（allagent2/rag）----
+sentence-transformers     # embedding 模型
+transformers
+chromadb                  # 向量库（EphemeralClient）
+jieba                     # 中文分词 / BM25
+# pymilvus                 # 仅 rag/data.py 的 Milvus 独立 demo 需要，按需打开
+
+# ---- 其它 ----
+requests                  # 天气工具 HTTP 调用
+redis                     # database/redistest.py 需要
+langgraph-checkpoint-redis   # LangGraph 会话状态 Redis 持久化
+mcp                          # MCP SDK(server: FastMCP / client: streamable-http)

@@ -1,0 +1,14 @@
+# 【安全】密钥与产物永不入库
+core/key.env
+*.env
+!.env.example
+!core/key.env.example
+
+__pycache__/
+*.pyc
+guance/logs/
+rag/milvus_demo.db/
+rag/chroma_db/
+session/memory_index/
+*.db
+.venv/

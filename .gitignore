@@ -1,0 +1,45 @@
+# ============================================================
+# 养老智能体后端 —— 仓库忽略规则
+# 只跟踪：fastap2 / allagent2 源码 + Docker 资产
+# 绝不跟踪：密钥、大模型权重、工作区内部数据、兄弟项目
+# ============================================================
+
+# ===== 密钥 / 环境（含真实凭据，绝不入库）=====
+*.env
+!*.env.example
+**/key.env
+**/mysql.env
+
+# ===== 大模型权重（运行时从 HF 镜像源下载，不进仓库）=====
+allagent2/rag/models/
+**/chroma_db/
+**/__pycache__/
+**/*.py[cod]
+
+# ===== 工作区 / IDE 内部数据 =====
+**/.workbuddy/
+session/
+.vscode/
+
+# ===== 图片 / 杂项脚本（非源码）=====
+*.png
+/brute.html
+/ft.py
+/ft2.py
+/test.py
+/go.mod
+
+# ===== 兄弟项目（仅推 fastap2 + allagent2 + Docker）=====
+/allagent/
+/fastap/
+/golang/
+/mcpuses/
+# --- 归档与本地残留（2026-11 重构后） ---
+attic/
+scratch/
+.git-rewrite/
+uploads/
+*.log
+server_*.log
+**/milvus_demo.db/
+*.orig*

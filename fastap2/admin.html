@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>管理后台 · 颐养智能体</title>
+<link rel="stylesheet" href="/static/app.css" />
+<style>
+  .admin-nav .brand-mark {
+    width: 32px; height: 32px; border-radius: 9px;
+    background: linear-gradient(135deg, #4d6bfe, #7b5cff);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; color: #fff;
+  }
+  .admin-nav .me { padding: 12px; display: flex; align-items: center; gap: 10px; color: #cbd5e1; font-size: 12.5px; }
+  .admin-nav .me .n { color: #fff; font-weight: 550; }
+  .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .toolbar .input, .toolbar .select { height: 36px; width: auto; min-width: 160px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .muted-box { background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 13px; color: var(--text-2); }
+  .kv-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px 22px; font-size: 13.5px; }
+  .kv-grid > div { display: flex; gap: 8px; }
+  .kv-grid .k { color: var(--text-3); min-width: 96px; }
+</style>
+</head>
+<body>
+
+<div class="admin-app">
+  <!-- ============ 左导航 ============ -->
+  <aside class="admin-nav">
+    <div class="brand">
+      <div class="brand-mark">颐</div>
+      <div>
+        <div>颐养 · 管理台</div>
+        <div style="font-size:11px;color:#7c8ba1;font-weight:400">Admin Console</div>
+      </div>
+    </div>
+
+    <div class="nav-list" id="navList">
+      <div class="nav-item active" data-page="overview"><span>📊</span>概览</div>
+      <div class="nav-item" data-page="acl"><span>🔗</span>用户与授权</div>
+      <div class="nav-item" data-page="elder"><span>👴</span>老人档案</div>
+      <div class="nav-item" data-page="health"><span>📈</span>健康记录</div>
+      <div class="nav-item" data-page="audit"><span>🛡</span>审计日志</div>
+      <div class="nav-item" data-page="skills"><span>✨</span>技能管理</div>
+      <div class="nav-item" data-page="diag"><span>🩺</span>系统诊断</div>
+    </div>
+
+    <div class="nav-foot">
+      <div class="me">
+        <div class="avatar avatar-sm" id="meAvatar">A</div>
+        <div class="grow" style="min-width:0">
+          <div class="n truncate" id="meName">admin</div>
+          <div class="truncate" style="color:#7c8ba1">管理员</div>
+        </div>
+      </div>
+      <button class="btn btn-block btn-sm" id="toChat" style="margin-top:6px;background:transparent;border-color:rgba(255,255,255,.16);color:#cbd5e1">← 返回对话</button>
+      <button class="btn btn-block btn-sm" id="logoutBtn" style="margin-top:6px;background:transparent;border-color:rgba(255,255,255,.16);color:#cbd5e1">退出登录</button>
+    </div>
+  </aside>
+
+  <!-- ============ 主区 ============ -->
+  <main class="admin-main">
+    <header class="admin-top">
+      <div class="row">
+        <h1 style="font-size:16px" id="pageTitle">概览</h1>
+        <span class="badge badge-brand">admin</span>
+      </div>
+      <div class="row">
+        <span class="small muted" id="topoBadge"></span>
+        <button class="btn btn-sm" id="refreshBtn">刷新</button>
+      </div>
+    </header>
+
+    <div class="admin-body">
+
+      <!-- ---------- 概览 ---------- -->
+      <section class="page active" data-page="overview">
+        <div class="stat-grid" id="statGrid"></div>
+
+        <div class="grid-2" style="margin-top:18px">
+          <div class="card card-pad">
+            <div class="section-title">服务装配</div>
+            <div class="kv-grid" id="statusKv"></div>
+          </div>
+          <div class="card card-pad">
+            <div class="section-title">成本与检索</div>
+            <div class="kv-grid" id="usageKv"></div>
+          </div>
+        </div>
+
+        <div class="card card-pad" style="margin-top:18px">
+          <div class="row-between">
+            <div class="section-title" style="margin:0">最近对话账本</div>
+            <span class="small muted">token_usage.jsonl 最近 10 条</span>
+          </div>
+          <div class="table-wrap" style="margin-top:12px;max-height:300px">
+            <table class="table" id="usageTable">
+              <thead><tr><th>时间</th><th>模型/轮次</th><th>输入</th><th>输出</th><th>成本</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- 用户与授权 ---------- -->
+      <section class="page" data-page="acl">
+        <div class="card card-pad">
+          <div class="section-title">查用户</div>
+          <div class="toolbar">
+            <input class="input" id="aclUsername" placeholder="输入用户名，如 testuser01" />
+            <button class="btn btn-primary" id="aclLookup">查询</button>
+          </div>
+          <div class="muted-box" id="aclUserBox">输入用户名后查询 user_id（绑定接口用的是 user_id）。</div>
+        </div>
+
+        <div class="grid-2" style="margin-top:16px">
+          <div class="card card-pad">
+            <div class="section-title">授予 / 回收授权</div>
+            <div class="col" style="gap:12px">
+              <div class="field">
+                <label>user_id</label>
+                <input class="input mono" id="aclUserId" placeholder="查询后自动填入" />
+              </div>
+              <div class="field">
+                <label>老人编号</label>
+                <input class="input mono" id="aclElderId" placeholder="E001" />
+              </div>
+              <div class="field">
+                <label>关系</label>
+                <select class="select" id="aclRelation">
+                  <option value="caregiver">caregiver（照护者）</option>
+                  <option value="family">family（家属）</option>
+                  <option value="nurse">nurse（护理员）</option>
+                </select>
+              </div>
+              <div class="row" style="gap:8px">
+                <button class="btn btn-primary grow" id="aclBind">绑定</button>
+                <button class="btn btn-danger grow" id="aclUnbind">解绑</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card card-pad">
+            <div class="row-between">
+              <div class="section-title" style="margin:0">该用户已授权的老人</div>
+              <button class="btn btn-sm" id="aclListAll">查全部</button>
+            </div>
+            <div class="table-wrap" style="margin-top:12px;max-height:320px">
+              <table class="table" id="bindingTable">
+                <thead><tr><th>老人编号</th><th>关系</th></tr></thead>
+                <tbody><tr><td colspan="2" class="muted">查询后显示</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- 老人档案 ---------- -->
+      <section class="page" data-page="elder">
+        <div class="card card-pad">
+          <div class="section-title">新建 / 更新档案</div>
+          <div class="form-grid">
+            <div class="field"><label>老人编号 *</label><input class="input mono" id="eId" placeholder="E001" /></div>
+            <div class="field"><label>姓名 *</label><input class="input" id="eName" placeholder="张桂兰" /></div>
+            <div class="field"><label>年龄</label><input class="input" id="eAge" type="number" placeholder="78" /></div>
+            <div class="field"><label>性别</label>
+              <select class="select" id="eGender"><option value="">未填</option><option>男</option><option>女</option></select>
+            </div>
+            <div class="field"><label>自理状态</label><input class="input" id="eTag" placeholder="自理 / 半失能" /></div>
+            <div class="field"><label>慢性病</label><input class="input" id="eChronic" placeholder="高血压、糖尿病" /></div>
+            <div class="field"><label>联系电话</label><input class="input" id="ePhone" placeholder="13800000000" /></div>
+          </div>
+          <div class="row" style="margin-top:14px;gap:8px">
+            <button class="btn btn-primary" id="elderCreate">创建 / 更新</button>
+            <button class="btn" id="elderSelect">查询档案</button>
+            <button class="btn btn-danger" id="elderDelete">删除档案</button>
+            <span class="small muted">更新与删除都需要编号 + 姓名</span>
+          </div>
+        </div>
+
+        <div class="card card-pad" style="margin-top:16px">
+          <div class="section-title">档案详情</div>
+          <div class="muted-box" id="elderBox">查询后显示</div>
+        </div>
+      </section>
+
+      <!-- ---------- 健康记录 ---------- -->
+      <section class="page" data-page="health">
+        <div class="card card-pad">
+          <div class="toolbar">
+            <input class="input mono" id="hElderId" placeholder="老人编号，如 E001" />
+            <button class="btn btn-primary" id="hLoad">查询</button>
+            <select class="select" id="hLimit">
+              <option value="50">最近 50 条</option>
+              <option value="100" selected>最近 100 条</option>
+              <option value="300">最近 300 条</option>
+            </select>
+            <span class="small muted" id="hMeta"></span>
+          </div>
+          <div class="stat-grid" id="hStats"></div>
+        </div>
+
+        <div class="grid-2" style="margin-top:16px">
+          <div class="card card-pad">
+            <div class="section-title">指标汇总与趋势</div>
+            <div class="table-wrap" style="max-height:360px">
+              <table class="table" id="hMetricTable">
+                <thead><tr><th>指标</th><th>趋势</th><th>最新</th><th>参考区间</th><th>最小/最大</th><th>均值</th><th>状态</th></tr></thead>
+                <tbody><tr><td colspan="7" class="muted">查询后显示</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card card-pad">
+            <div class="row-between">
+              <div class="section-title" style="margin:0">风险初筛</div>
+              <span class="badge" id="hRiskBadge">—</span>
+            </div>
+            <div id="hRisk" class="muted-box" style="margin-top:12px">查询后显示</div>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top:16px">
+          <div class="card card-pad">
+            <div class="section-title">新增记录</div>
+            <div class="form-grid">
+              <div class="field"><label>指标 *</label>
+                <select class="select" id="hMetric">
+                  <option>血压</option><option>收缩压</option><option>舒张压</option>
+                  <option>血糖</option><option>心率</option><option>体温</option>
+                  <option>血氧</option><option>体重</option>
+                </select>
+              </div>
+              <div class="field"><label>数值 *</label><input class="input" id="hValue" type="number" step="0.1" placeholder="135" /></div>
+              <div class="field"><label>设备编号</label><input class="input mono" id="hDevice" placeholder="DEV-001" /></div>
+              <div class="field"><label>测量时间</label><input class="input" id="hTime" type="datetime-local" /></div>
+            </div>
+            <div class="row" style="margin-top:14px">
+              <button class="btn btn-primary" id="hAdd">提交记录</button>
+              <span class="small muted">时间留空 = 现在</span>
+            </div>
+          </div>
+
+          <div class="card card-pad">
+            <div class="row-between">
+              <div class="section-title" style="margin:0">明细</div>
+              <span class="small muted" id="hCount"></span>
+            </div>
+            <div class="table-wrap" style="margin-top:12px;max-height:340px">
+              <table class="table" id="hRecordTable">
+                <thead><tr><th>时间</th><th>指标</th><th>数值</th><th>设备</th><th></th></tr></thead>
+                <tbody><tr><td colspan="5" class="muted">查询后显示</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- 审计日志 ---------- -->
+      <section class="page" data-page="audit">
+        <div class="card card-pad">
+          <div class="toolbar">
+            <label class="row small" style="gap:6px">
+              <input type="checkbox" id="onlyDenied" /> 只看被拒（有害访问）
+            </label>
+            <button class="btn btn-sm" id="auditRefresh">刷新</button>
+            <span class="small muted" id="auditMeta"></span>
+          </div>
+          <div class="table-wrap" style="max-height:560px">
+            <table class="table" id="auditTable">
+              <thead><tr><th>#</th><th>时间</th><th>用户</th><th>动作</th><th>资源</th><th>结果</th><th>原因</th></tr></thead>
+              <tbody><tr><td colspan="7" class="muted">加载中…</td></tr></tbody>
+            </table>
+          </div>
+          <div class="row" style="margin-top:12px;gap:8px">
+            <button class="btn btn-sm" id="auditPrev">上一页</button>
+            <span class="small muted" id="auditPage">第 1 页</span>
+            <button class="btn btn-sm" id="auditNext">下一页</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- 技能管理 ---------- -->
+      <section class="page" data-page="skills">
+        <div class="card card-pad">
+          <div class="row-between">
+            <div class="section-title" style="margin:0">技能库</div>
+            <span class="small muted">列出全部技能；启停作用于当前管理员账号</span>
+          </div>
+          <div id="adminSkillList" style="margin-top:12px"><div class="empty">加载中…</div></div>
+        </div>
+      </section>
+
+      <!-- ---------- 系统诊断 ---------- -->
+      <section class="page" data-page="diag">
+        <div class="grid-2">
+          <div class="card card-pad">
+            <div class="section-title">装配状态</div>
+            <div class="kv-grid" id="diagKv"></div>
+          </div>
+          <div class="card card-pad">
+            <div class="section-title">链路查询</div>
+            <div class="toolbar" style="margin-bottom:10px">
+              <input class="input mono" id="traceTid" placeholder="thread_id，如 t-xxxxx" />
+              <button class="btn btn-primary" id="traceBtn">拉取</button>
+            </div>
+            <div id="traceOut" class="muted-box">输入 thread_id 查看执行链路</div>
+          </div>
+        </div>
+
+        <div class="card card-pad" style="margin-top:16px">
+          <div class="section-title">原始 JSON</div>
+          <pre class="code" id="rawJson">点右上角「刷新」拉取 /agent/status 与 /agent/metrics</pre>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<script src="/static/common.js"></script>
+<script>
+(function () {
+  if (!App.guard(true)) return;
+  const $ = (id) => document.getElementById(id);
+
+  $("meName").textContent = App.username() || "admin";
+  $("meAvatar").textContent = App.initials(App.username());
+  $("toChat").onclick = () => (location.href = "/");
+  $("logoutBtn").onclick = App.logout;
+
+  /* ---------------- 导航 ---------------- */
+  const TITLES = {
+    overview: "概览", acl: "用户与授权", elder: "老人档案",
+    health: "健康记录", audit: "审计日志", skills: "技能管理", diag: "系统诊断",
+  };
+  let currentPage = "overview";
+
+  function show(page) {
+    currentPage = page;
+    $("pageTitle").textContent = TITLES[page] || page;
+    document.querySelectorAll(".nav-item").forEach((n) =>
+      n.classList.toggle("active", n.dataset.page === page));
+    document.querySelectorAll(".page").forEach((p) =>
+      p.classList.toggle("active", p.dataset.page === page));
+    if (page === "overview") loadOverview();
+    if (page === "health") loadHealth();
+    if (page === "audit") loadAudit(1);
+    if (page === "skills") loadSkills();
+    if (page === "diag") loadDiag();
+  }
+  $("navList").addEventListener("click", (e) => {
+    const item = e.target.closest("[data-page]");
+    if (item) show(item.dataset.page);
+  });
+
+  $("refreshBtn").onclick = () => show(currentPage);
+
+  /* ---------------- 概览 ---------------- */
+  let lastStatus = null, lastMetrics = null;
+
+  async function loadOverview() {
+    try {
+      const [st, mt] = await Promise.all([
+        App.api("/agent/status").catch(() => null),
+        App.api("/agent/metrics").catch(() => null),
+      ]);
+      lastStatus = st; lastMetrics = mt;
+      renderStats(st, mt);
+      renderStatusKv(st);
+      renderUsageKv(mt);
+      renderUsageTable(mt);
+      if (st && st.topology) $("topoBadge").textContent = st.topology + " 拓扑";
+    } catch (e) {
+      App.toast("加载概览失败：" + (e.message || ""), "err");
+    }
+  }
+
+  function renderStats(st, mt) {
+    const g = (mt && mt.global_usage) || {};
+    const rag = (mt && mt.rag_summary) || {};
+    const cards = [
+      ["服务状态", st ? (st.ready ? "就绪" : "未就绪") : "—",
+        st ? `${st.tools_count || 0} 个工具` : "无法读取", st && st.ready ? "var(--ok)" : "var(--danger)"],
+      ["持久化", st ? (st.persistent ? "Redis" : "内存") : "—",
+        st && st.persistent ? "重启不丢会话" : "重启丢会话", st && st.persistent ? "var(--ok)" : "var(--warn)"],
+      ["累计调用", g.calls != null ? g.calls : "—",
+        g.input_tokens != null ? `输入 ${g.input_tokens} / 输出 ${g.output_tokens || 0}` : "无数据"],
+      ["累计成本", g.cost_yuan != null ? "¥" + Number(g.cost_yuan).toFixed(4) : "—",
+        g.cache_hit_rate != null ? `缓存命中 ${Math.round(g.cache_hit_rate * 100)}%` : "无数据"],
+      ["RAG 查询", rag.queries != null ? rag.queries : "—",
+        rag.avg_latency_ms != null ? `平均 ${rag.avg_latency_ms} ms` : "无数据"],
+      ["向量降级", rag.vector_degraded != null ? rag.vector_degraded : "—",
+        rag.rerank_used_rate != null ? `重排使用率 ${Math.round(rag.rerank_used_rate * 100)}%` : "无数据"],
+    ];
+    $("statGrid").innerHTML = cards.map(([k, v, s, color]) => `
+      <div class="stat">
+        <div class="k">${App.esc(k)}</div>
+        <div class="v" style="${color ? "color:" + color : ""}">${App.esc(String(v))}</div>
+        <div class="s">${App.esc(String(s))}</div>
+      </div>`).join("");
+  }
+
+  function kv(el, pairs) {
+    el.innerHTML = pairs.map(([k, v]) =>
+      `<div><span class="k">${App.esc(k)}</span><span>${App.esc(v == null ? "—" : String(v))}</span></div>`
+    ).join("");
+  }
+
+  function renderStatusKv(st) {
+    const pairs = st ? [
+      ["ready", st.ready], ["tools_count", st.tools_count], ["topology", st.topology],
+      ["engine", st.engine], ["persistent", st.persistent], ["error", st.error],
+    ] : [["状态", "无法读取 /agent/status"]];
+    kv($("statusKv"), pairs);
+    kv($("diagKv"), pairs);
+  }
+
+  function renderUsageKv(mt) {
+    const g = (mt && mt.global_usage) || {};
+    const rag = (mt && mt.rag_summary) || {};
+    kv($("usageKv"), [
+      ["调用次数", g.calls], ["输入 tokens", g.input_tokens], ["输出 tokens", g.output_tokens],
+      ["缓存命中率", g.cache_hit_rate != null ? Math.round(g.cache_hit_rate * 100) + "%" : null],
+      ["累计成本", g.cost_yuan != null ? "¥" + Number(g.cost_yuan).toFixed(4) : null],
+      ["RAG 平均延迟", rag.avg_latency_ms != null ? rag.avg_latency_ms + " ms" : null],
+      ["重排使用率", rag.rerank_used_rate != null ? Math.round(rag.rerank_used_rate * 100) + "%" : null],
+      ["上下文注入", rag.avg_injected_tokens],
+    ]);
+  }
+
+  function renderUsageTable(mt) {
+    const rows = (mt && mt.usage_log) || [];
+    const tb = $("usageTable").querySelector("tbody");
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="5" class="muted">账本为空（跑一轮对话后出现）</td></tr>'; return; }
+    tb.innerHTML = rows.slice(-10).reverse().map((r) => `
+      <tr>
+        <td class="small">${App.esc(App.fmtTime(r.ts || r.time || r.created_at))}</td>
+        <td class="small">${App.esc(r.model || r.tag || r.provider || "-")}</td>
+        <td class="small mono">${r.input_tokens ?? r.prompt_tokens ?? "-"}</td>
+        <td class="small mono">${r.output_tokens ?? r.completion_tokens ?? "-"}</td>
+        <td class="small mono">${r.cost_yuan != null ? "¥" + Number(r.cost_yuan).toFixed(6) : "-"}</td>
+      </tr>`).join("");
+  }
+
+  /* ---------------- 用户与授权 ---------------- */
+  let currentUserId = "";
+
+  $("aclLookup").onclick = async () => {
+    const name = $("aclUsername").value.trim();
+    if (!name) return App.toast("请输入用户名", "warn");
+    try {
+      const d = await App.api("/acl/user_id?username=" + encodeURIComponent(name));
+      currentUserId = d.user_id || "";
+      $("aclUserId").value = currentUserId;
+      $("aclUserBox").innerHTML = `用户名 <b>${App.esc(d.username)}</b> · 角色 <span class="badge badge-brand">${App.esc(d.role)}</span> ·
+        <span class="mono">${App.esc(d.user_id)}</span>`;
+      loadBindings();
+    } catch (e) {
+      $("aclUserBox").textContent = "查询失败：" + (e.message || "用户不存在");
+      App.toast("查询失败", "err");
+    }
+  };
+
+  async function loadBindings() {
+    const uid = $("aclUserId").value.trim() || currentUserId;
+    if (!uid) return App.toast("先查一个用户", "warn");
+    try {
+      const list = await App.api("/acl/bindings?user_id=" + encodeURIComponent(uid));
+      const tb = $("bindingTable").querySelector("tbody");
+      tb.innerHTML = (list && list.length)
+        ? list.map((b) => `<tr><td class="mono">${App.esc(b.elder_id)}</td><td>${App.esc(b.relation || "-")}</td></tr>`).join("")
+        : '<tr><td colspan="2" class="muted">该用户还没有任何授权</td></tr>';
+    } catch (e) {
+      App.toast("读取授权失败：" + (e.message || ""), "err");
+    }
+  }
+  $("aclListAll").onclick = loadBindings;
+
+  async function aclWrite(method) {
+    const user_id = $("aclUserId").value.trim();
+    const elder_id = $("aclElderId").value.trim();
+    if (!user_id || !elder_id) return App.toast("user_id 与老人编号都要填", "warn");
+    const body = { user_id, elder_id, relation: $("aclRelation").value };
+    try {
+      const r = await App.raw("/acl/bind", { method, body });
+      App.toast((r && r.msg) || "操作成功", "ok");
+      loadBindings();
+    } catch (e) {
+      App.toast(e.message || "操作失败", "err");
+    }
+  }
+  $("aclBind").onclick = () => aclWrite("POST");
+  $("aclUnbind").onclick = () => aclWrite("DELETE");
+
+  /* ---------------- 老人档案 ---------------- */
+  function elderBody() {
+    const body = {
+      elder_id: $("eId").value.trim(),
+      name: $("eName").value.trim(),
+    };
+    const age = $("eAge").value.trim();
+    if (age) body.age = Number(age);
+    if ($("eGender").value) body.gender = $("eGender").value;
+    if ($("eTag").value.trim()) body.health_tag = $("eTag").value.trim();
+    if ($("eChronic").value.trim()) body.chronic_disease = $("eChronic").value.trim();
+    if ($("ePhone").value.trim()) body.phone = $("ePhone").value.trim();
+    return body;
+  }
+
+  $("elderCreate").onclick = async () => {
+    const body = elderBody();
+    if (!body.elder_id || !body.name) return App.toast("编号和姓名必填", "warn");
+    try {
+      await App.api("/elder_identity/create_elder", { method: "POST", body });
+      App.toast("已创建", "ok");
+      $("elderSelect").click();
+    } catch (e) {
+      // 已存在时尝试更新
+      try {
+        await App.api("/elder_identity/update_elder", { method: "POST", body });
+        App.toast("已更新", "ok");
+        $("elderSelect").click();
+      } catch (e2) {
+        App.toast(e2.message || e.message || "保存失败", "err");
+      }
+    }
+  };
+
+  $("elderSelect").onclick = async () => {
+    const id = $("eId").value.trim();
+    if (!id) return App.toast("请输入老人编号", "warn");
+    try {
+      const d = await App.api("/elder_identity/select_elder?elder_id=" + encodeURIComponent(id));
+      if (!d) { $("elderBox").textContent = "没有该老人的记录"; return; }
+      $("elderBox").innerHTML = `
+        <div class="kv-grid">
+          <div><span class="k">编号</span><span class="mono">${App.esc(d.elder_id || id)}</span></div>
+          <div><span class="k">姓名</span><span>${App.esc(d.name || "-")}</span></div>
+          <div><span class="k">年龄</span><span>${App.esc(d.age ?? "-")}</span></div>
+          <div><span class="k">性别</span><span>${App.esc(d.gender || "-")}</span></div>
+          <div><span class="k">自理状态</span><span>${App.esc(d.health_tag || "-")}</span></div>
+          <div><span class="k">慢性病</span><span>${App.esc(d.chronic_disease || "-")}</span></div>
+          <div><span class="k">联系电话</span><span>${App.esc(d.phone || "-")}</span></div>
+        </div>`;
+      if (d.name) $("eName").value = d.name;
+      if (d.age != null) $("eAge").value = d.age;
+      if (d.health_tag) $("eTag").value = d.health_tag;
+      if (d.chronic_disease) $("eChronic").value = d.chronic_disease;
+      if (d.phone) $("ePhone").value = d.phone;
+    } catch (e) {
+      $("elderBox").textContent = "查询失败：" + (e.message || "可能是未绑定或无权限");
+      App.toast("查询失败", "err");
+    }
+  };
+
+  $("elderDelete").onclick = async () => {
+    const body = elderBody();
+    if (!body.elder_id || !body.name) return App.toast("删除需要编号 + 姓名", "warn");
+    if (!confirm(`确定删除老人 ${body.elder_id}（${body.name}）的档案？`)) return;
+    try {
+      await App.api("/elder_identity/delete_elder", { method: "DELETE", body });
+      App.toast("已删除", "ok");
+      $("elderBox").textContent = "已删除";
+    } catch (e) {
+      App.toast(e.message || "删除失败（需要 admin 的 elder:delete）", "err");
+    }
+  };
+
+  /* ---------------- 健康记录 ---------------- */
+  let hRecords = [];
+
+  /** 迷你趋势线：横轴时间、纵轴数值，绿色带 = 参考区间。 */
+  function sparkline(values, low, high) {
+    if (!values || values.length < 2) return '<span class="small muted">数据不足</span>';
+    const w = 124, h = 30, pad = 3;
+    const lo = Math.min(...values, low == null ? Infinity : low);
+    const hi = Math.max(...values, high == null ? -Infinity : high);
+    const span = (hi - lo) || 1;
+    const y = (v) => h - pad - ((v - lo) / span) * (h - 2 * pad);
+    const x = (i) => pad + (i * (w - 2 * pad)) / (values.length - 1);
+    const d = values.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(" ");
+    let band = "";
+    if (low != null && high != null) {
+      const y1 = y(high), y2 = y(low);
+      band = `<rect x="0" y="${Math.min(y1, y2).toFixed(1)}" width="${w}" height="${Math.abs(y2 - y1).toFixed(1)}" fill="#12b76a" opacity=".10"/>`;
+    }
+    return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${band}
+      <path d="${d}" fill="none" stroke="#4d6bfe" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="${x(values.length - 1).toFixed(1)}" cy="${y(values[values.length - 1]).toFixed(1)}" r="2.3" fill="#4d6bfe"/></svg>`;
+  }
+
+  $("hLoad").onclick = () => loadHealth();
+
+  async function loadHealth() {
+    const eid = ($("hElderId").value || "").trim();
+    if (!eid) return App.toast("请输入老人编号", "warn");
+    const limit = $("hLimit").value;
+    try {
+      const [stats, risk, recs] = await Promise.all([
+        App.api(`/health/stats/${encodeURIComponent(eid)}`),
+        App.api(`/health/risk/${encodeURIComponent(eid)}`).catch(() => null),
+        App.api(`/health/records/${encodeURIComponent(eid)}?limit=${limit}`).catch(() => null),
+      ]);
+      hRecords = (recs && recs.items) || [];
+      renderHealthStats(stats);
+      renderHealthMetrics(stats);
+      renderRisk(risk);
+      renderRecords();
+      $("hMeta").textContent = `${eid} · ${(stats && stats.total) || 0} 条记录`;
+    } catch (e) {
+      App.toast(e.message || "查询失败（需要 elder:health_read，且已绑定该老人）", "err");
+      $("hMeta").textContent = "查询失败";
+    }
+  }
+
+  function renderHealthStats(stats) {
+    const s = stats || {};
+    const cards = [
+      ["记录总数", s.total ?? "—", s.last_at ? "最近 " + String(s.last_at).slice(0, 10) : ""],
+      ["指标种类", s.metric_count ?? "—", "按 metric_type 归并"],
+      ["最早记录", s.first_at ? String(s.first_at).slice(0, 10) : "—", ""],
+      ["最近记录", s.last_at ? String(s.last_at).slice(0, 10) : "—", ""],
+    ];
+    $("hStats").innerHTML = cards.map(([k, v, sub]) => `
+      <div class="stat"><div class="k">${App.esc(k)}</div>
+        <div class="v">${App.esc(String(v))}</div>
+        <div class="s">${App.esc(sub || "")}</div></div>`).join("");
+  }
+
+  function renderHealthMetrics(stats) {
+    const metrics = (stats && stats.metrics) || [];
+    const tb = $("hMetricTable").querySelector("tbody");
+    if (!metrics.length) {
+      tb.innerHTML = '<tr><td colspan="7" class="muted">该老人还没有健康记录</td></tr>';
+      return;
+    }
+    // 明细是最新在前；画趋势要按时间正序
+    const grouped = {};
+    hRecords.slice().reverse().forEach((r) => {
+      const k = r.metric_type || "未分类";
+      (grouped[k] = grouped[k] || []).push(Number(r.value));
+    });
+
+    tb.innerHTML = metrics.map((m) => {
+      const ref = m.reference;
+      const cls = m.status === "偏高" ? "badge-danger"
+        : m.status === "偏低" ? "badge-warn"
+        : m.status === "正常" ? "badge-ok" : "badge";
+      return `<tr>
+        <td><b>${App.esc(m.metric_type)}</b><div class="small muted">${m.count} 次</div></td>
+        <td>${sparkline(grouped[m.metric_type] || [], ref && ref.low, ref && ref.high)}</td>
+        <td class="mono">${App.esc(String(m.latest))}</td>
+        <td class="small muted">${ref ? ref.low + " ~ " + ref.high : "—"}</td>
+        <td class="small mono">${m.min} / ${m.max}</td>
+        <td class="small mono">${m.avg}</td>
+        <td><span class="badge ${cls}">${App.esc(m.status)}</span></td>
+      </tr>`;
+    }).join("");
+  }
+
+  function renderRisk(risk) {
+    const badge = $("hRiskBadge");
+    const box = $("hRisk");
+    if (!risk) {
+      badge.className = "badge"; badge.textContent = "—";
+      box.textContent = "风险接口不可用";
+      return;
+    }
+    const lv = risk.risk_level || "低";
+    badge.className = "badge " + (lv === "高" ? "badge-danger" : lv === "中" ? "badge-warn" : "badge-ok");
+    badge.textContent = "总体 " + lv;
+
+    const items = risk.items || [];
+    if (!items.length) {
+      box.innerHTML = '<span class="muted">没有可判定的指标（无参考区间或没有记录）</span>';
+      return;
+    }
+    box.innerHTML = items.map((i) => {
+      const cls = i.level === "高" ? "badge-danger" : i.level === "中" ? "badge-warn" : "badge-ok";
+      return `<div class="row-between" style="padding:7px 0;border-bottom:1px solid var(--line)">
+        <div>
+          <b>${App.esc(i.metric_type)}</b>
+          <div class="small muted">最新 ${i.latest} · 参考 ${i.reference.low}~${i.reference.high}${
+            i.consecutive_over ? " · 连续 " + i.consecutive_over + " 次超限" : ""}</div>
+        </div>
+        <span class="badge ${cls}">${App.esc(i.direction)}</span>
+      </div>`;
+    }).join("") + `<div class="small muted" style="margin-top:10px">${App.esc(risk.note || "")}</div>`;
+  }
+
+  function renderRecords() {
+    const tb = $("hRecordTable").querySelector("tbody");
+    $("hCount").textContent = `${hRecords.length} 条`;
+    if (!hRecords.length) {
+      tb.innerHTML = '<tr><td colspan="5" class="muted">没有记录</td></tr>';
+      return;
+    }
+    tb.innerHTML = hRecords.map((r) => `
+      <tr>
+        <td class="small">${App.esc(String(r.record_time || "").replace("T", " ").slice(0, 16))}</td>
+        <td class="small"><b>${App.esc(r.metric_type || "-")}</b></td>
+        <td class="mono">${App.esc(String(r.value))}</td>
+        <td class="small muted">${App.esc(r.device_id || "-")}</td>
+        <td><button class="btn btn-sm btn-danger" data-delrec="${r.health_id}">删</button></td>
+      </tr>`).join("");
+
+    tb.querySelectorAll("[data-delrec]").forEach((btn) => {
+      btn.onclick = async () => {
+        const id = btn.dataset.delrec;
+        if (!confirm(`删除记录 #${id}？`)) return;
+        try {
+          await App.api(`/health/record/${id}`, { method: "DELETE" });
+          App.toast("已删除", "ok");
+          loadHealth();
+        } catch (e) {
+          App.toast(e.message || "删除失败（需要 elder:health_write）", "err");
+        }
+      };
+    });
+  }
+
+  $("hAdd").onclick = async () => {
+    const eid = ($("hElderId").value || "").trim();
+    if (!eid) return App.toast("先填老人编号", "warn");
+    const value = Number($("hValue").value);
+    if (!Number.isFinite(value)) return App.toast("请填合法的数值", "warn");
+    const body = {
+      elder_id: eid,
+      metric_type: $("hMetric").value,
+      value,
+      device_id: ($("hDevice").value || "").trim() || "manual",
+    };
+    const t = $("hTime").value;
+    if (t) body.record_time = t.length === 16 ? t + ":00" : t;
+    try {
+      await App.api("/health/create_record", { method: "POST", body });
+      App.toast("已提交", "ok");
+      $("hValue").value = "";
+      loadHealth();
+    } catch (e) {
+      App.toast(e.message || "提交失败（需要 elder:health_write，且已绑定该老人）", "err");
+    }
+  };
+
+  /* ---------------- 审计日志 ---------------- */
+  let auditPage = 1;
+  async function loadAudit(page) {
+    auditPage = page || auditPage;
+    const denied = $("onlyDenied").checked ? "true" : "false";
+    try {
+      const d = await App.api(`/audit/logs?only_denied=${denied}&page=${auditPage}&size=20`);
+      const list = (d && d.list) || [];
+      const total = (d && d.total) || 0;
+      $("auditMeta").textContent = `共 ${total} 条`;
+      $("auditPage").textContent = `第 ${auditPage} 页`;
+      const tb = $("auditTable").querySelector("tbody");
+      tb.innerHTML = list.length ? list.map((r) => `
+        <tr>
+          <td class="mono small">${r.id}</td>
+          <td class="small">${App.esc(App.fmtTime(r.create_time))}</td>
+          <td class="mono small">${App.esc(String(r.user_id || "").slice(0, 12))}</td>
+          <td class="small">${App.esc(r.action)}</td>
+          <td class="small muted">${App.esc(r.resource || "-")}</td>
+          <td>${r.decision ? '<span class="badge badge-ok">允许</span>' : '<span class="badge badge-danger">拒绝</span>'}</td>
+          <td class="small muted">${App.esc(r.reason || "-")}</td>
+        </tr>`).join("") : '<tr><td colspan="7" class="muted">没有记录</td></tr>';
+    } catch (e) {
+      App.toast("读取审计失败：" + (e.message || ""), "err");
+    }
+  }
+  $("auditRefresh").onclick = () => loadAudit(auditPage);
+  $("onlyDenied").onchange = () => loadAudit(1);
+  $("auditPrev").onclick = () => { if (auditPage > 1) loadAudit(auditPage - 1); };
+  $("auditNext").onclick = () => loadAudit(auditPage + 1);
+
+  /* ---------------- 技能管理 ---------------- */
+  async function loadSkills() {
+    const box = $("adminSkillList");
+    box.innerHTML = '<div class="empty"><span class="spinner spinner-dark"></span></div>';
+    try {
+      const d = await App.api("/skills");
+      const items = (d && d.items) || [];
+      if (!items.length) { box.innerHTML = '<div class="empty">技能库为空</div>'; return; }
+      box.innerHTML = `<div class="table-wrap"><table class="table">
+        <thead><tr><th>技能</th><th>说明</th><th>状态</th><th>使用</th><th>好评率</th><th>操作</th></tr></thead>
+        <tbody>${items.map((s) => `
+          <tr>
+            <td><b>${App.esc(s.name || s.id)}</b><div class="small muted mono">${App.esc(s.id)}</div></td>
+            <td class="small muted">${App.esc(s.description || s.summary || "-")}</td>
+            <td>${s.enabled ? '<span class="badge badge-ok">已启用</span>' : '<span class="badge">未启用</span>'}
+                ${s.enabled && s.auto ? '<span class="badge badge-brand">常开</span>' : ""}</td>
+            <td class="mono small">${s.use_count || 0}</td>
+            <td class="small">${s.success_rate == null ? "—" : Math.round(s.success_rate * 100) + "%"}</td>
+            <td>
+              ${s.enabled
+                ? `<button class="btn btn-sm" data-skill="${App.esc(s.id)}" data-on="0">停用</button>`
+                : `<button class="btn btn-sm btn-primary" data-skill="${App.esc(s.id)}" data-on="1">启用</button>`}
+            </td>
+          </tr>`).join("")}</tbody></table></div>`;
+
+      box.querySelectorAll("[data-skill]").forEach((btn) => {
+        btn.onclick = async () => {
+          const id = btn.dataset.skill, on = btn.dataset.on === "1";
+          try {
+            await App.api(`/skills/${encodeURIComponent(id)}${on ? "/enable" : ""}`,
+              { method: on ? "POST" : "DELETE" });
+            App.toast(on ? "已启用" : "已停用", "ok");
+            loadSkills();
+          } catch (e) { App.toast(e.message || "操作失败", "err"); }
+        };
+      });
+    } catch (e) {
+      box.innerHTML = `<div class="empty">加载失败：${App.esc(e.message || "")}</div>`;
+    }
+  }
+
+  /* ---------------- 系统诊断 ---------------- */
+  async function loadDiag() {
+    try {
+      const [st, mt] = await Promise.all([
+        App.api("/agent/status").catch(() => null),
+        App.api("/agent/metrics").catch(() => null),
+      ]);
+      lastStatus = st; lastMetrics = mt;
+      renderStatusKv(st);
+      $("rawJson").textContent = JSON.stringify({ status: st, metrics: mt }, null, 2);
+    } catch (e) {
+      $("rawJson").textContent = "读取失败：" + (e.message || "");
+    }
+  }
+
+  $("traceBtn").onclick = async () => {
+    const tid = $("traceTid").value.trim();
+    if (!tid) return App.toast("请输入 thread_id", "warn");
+    const out = $("traceOut");
+    out.innerHTML = '<div class="empty"><span class="spinner spinner-dark"></span></div>';
+    try {
+      const d = await App.api("/agent/trace/" + encodeURIComponent(tid));
+      const events = (d && d.events) || [];
+      const steps = (d && d.steps) || [];
+      if (!events.length && !steps.length) {
+        out.innerHTML = '<span class="muted">该会话没有链路事件（可能还没跑过）</span>';
+        return;
+      }
+      if (events.length) {
+        const u = App.sumUsage(events);
+        out.innerHTML = `
+          <div class="token-line" style="margin:0 0 8px">📊 ${App.usageLine(u)}</div>
+          <div class="think open" style="background:transparent;border:none">
+            <div class="think-body" style="display:block;padding:0;border:none">${App.renderTrace(events)}</div>
+          </div>
+          <details style="margin-top:10px">
+            <summary class="small muted" style="cursor:pointer">原始事件 JSON（${events.length} 条）</summary>
+            <pre class="code" style="margin-top:8px">${App.esc(JSON.stringify(events, null, 2))}</pre>
+          </details>`;
+      } else {
+        out.innerHTML = `<div class="tl">${steps.map((s) => `<div class="tl-item">
+            <div class="tl-head"><span class="badge">step ${s.step}</span>
+              <strong>${App.esc(s.node || "-")}</strong>
+              <span class="muted small">消息 ${s.messages_total ?? "-"}</span></div></div>`).join("")}</div>`;
+      }
+    } catch (e) {
+      out.innerHTML = `<div class="muted-box">读取失败：${App.esc(e.message || "")}</div>`;
+    }
+  };
+
+  /* ---------------- 初始化 ---------------- */
+  show("overview");
+})();
+</script>
+</body>
+</html>

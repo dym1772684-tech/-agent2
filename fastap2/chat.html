@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>对话 · 颐养智能体</title>
+<link rel="stylesheet" href="/static/app.css" />
+<style>
+  .status-line { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-3); margin-top: 8px; }
+  .dot-live { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px rgba(18,183,106,.15); }
+  .dot-off { background: var(--text-3); box-shadow: 0 0 0 3px rgba(143,150,163,.15); }
+  .skill-item, .mem-item { padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .skill-item:last-child, .mem-item:last-child { border-bottom: none; }
+  .addr { display: flex; align-items: center; gap: 8px; }
+  .composer-tools { display: flex; align-items: center; gap: 4px; }
+</style>
+</head>
+<body>
+
+<div class="chat-app">
+  <!-- ================= 侧边栏 ================= -->
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="sidebar-brand">
+        <div class="brand-mark" style="width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#4d6bfe,#7b5cff);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px">颐</div>
+        <div class="grow">
+          <div class="name">颐养智能体</div>
+          <div class="sub" id="sideSub">Elder Care Agent</div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" id="newChat" style="height:38px">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        新建对话
+      </button>
+    </div>
+
+    <div class="sidebar-scroll">
+      <div class="sidebar-label">最近对话</div>
+      <div id="convList"></div>
+
+      <div class="sidebar-label">工具</div>
+      <div class="conv-item" id="openSkills">
+        <span>✨</span><span class="grow title">技能</span>
+      </div>
+      <div class="conv-item" id="openMemory">
+        <span>🧠</span><span class="grow title">我的记忆</span>
+      </div>
+      <div class="conv-item" id="openAdmin" style="display:none">
+        <span>⚙️</span><span class="grow title">管理后台</span>
+      </div>
+    </div>
+
+    <div class="sidebar-foot">
+      <div class="user-card">
+        <div class="avatar" id="userAvatar">U</div>
+        <div class="grow" style="min-width:0">
+          <div class="u-name truncate" id="userName">未登录</div>
+          <div class="u-role" id="userRole">—</div>
+        </div>
+        <button class="icon-btn" id="logoutBtn" title="退出登录">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ================= 主区 ================= -->
+  <main class="chat-main">
+    <header class="chat-top">
+      <div class="row" style="min-width:0">
+        <div class="title truncate" id="chatTitle">新对话</div>
+        <span class="badge" id="topoBadge" style="display:none"></span>
+      </div>
+      <div class="row">
+        <label class="elder-pill" title="当前关联的老人编号（决定能查谁的档案）">
+          <span style="color:var(--text-3)">老人</span>
+          <input id="elderInput" placeholder="E001" spellcheck="false" />
+        </label>
+        <span class="status-line" id="healthLine" title="服务状态">
+          <span class="dot-live" id="healthDot"></span><span id="healthText">检测中</span>
+        </span>
+      </div>
+    </header>
+
+    <div class="msgs" id="msgs">
+      <div class="msgs-inner" id="msgsInner"></div>
+    </div>
+
+    <div class="composer-wrap">
+      <div class="composer">
+        <div id="attachRow"></div>
+        <textarea id="input" rows="1" placeholder="问我任何关于老人健康、饮食、养生的问题…"></textarea>
+        <div class="composer-bar">
+          <div class="composer-tools">
+            <button class="icon-btn" id="attachBtn" title="上传报告（PDF / Word / 表格 / 文本）">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.4 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+            </button>
+            <input type="file" id="fileInput" class="hidden" accept=".txt,.md,.csv,.pdf,.docx,.xlsx,.xls" />
+            <span class="small muted" id="tbHint"></span>
+          </div>
+          <div class="row" style="gap:6px">
+            <button class="btn btn-sm hidden" id="stopBtn" style="color:var(--danger)">停止</button>
+            <button class="send-btn" id="sendBtn" title="发送（Enter）">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="hint-line">回答基于档案与本地知识库，仅供健康生活参考，不替代医生诊断 · Enter 发送 / Shift+Enter 换行</div>
+    </div>
+  </main>
+</div>
+
+<!-- ================= 抽屉：技能 ================= -->
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <div>
+      <div style="font-weight:650" id="drawerTitle">技能</div>
+      <div class="small muted" id="drawerSub">启用后会在相关话题自动生效</div>
+    </div>
+    <button class="icon-btn" id="drawerClose">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<script src="/static/common.js"></script>
+<script>
+(function () {
+  if (!App.guard(false)) return;
+
+  /* ---------- 元素 ---------- */
+  const $ = (id) => document.getElementById(id);
+  const msgsEl = $("msgs"), inner = $("msgsInner"), inputEl = $("input");
+  const sendBtn = $("sendBtn"), stopBtn = $("stopBtn"), elderInput = $("elderInput");
+  const convListEl = $("convList"), chatTitle = $("chatTitle");
+  const overlay = $("overlay"), drawer = $("drawer"), drawerBody = $("drawerBody");
+  const drawerTitle = $("drawerTitle"), drawerSub = $("drawerSub");
+  const attachRow = $("attachRow"), fileInput = $("fileInput");
+
+  /* ---------- 状态 ---------- */
+  const uid = App.userId() || "anon";
+  const CONV_KEY = "ecare.convs." + uid;
+  const histKey = (tid) => "ecare.hist." + tid;
+
+  let threadId = null;
+  let streaming = false;
+  let abortCtrl = null;
+  let attached = null;   // {file_id, name, chars}
+
+  /* ---------- 用户信息 ---------- */
+  $("userName").textContent = App.username() || "用户";
+  $("userAvatar").textContent = App.initials(App.username());
+  $("userRole").textContent = App.isAdmin() ? "管理员" : "普通用户";
+  if (App.isAdmin()) $("openAdmin").style.display = "flex";
+  $("openAdmin").addEventListener("click", () => { location.href = "/admin"; });
+  $("logoutBtn").addEventListener("click", App.logout);
+
+  elderInput.value = localStorage.getItem(App.KEY.elder) || "";
+  elderInput.addEventListener("change", () => {
+    localStorage.setItem(App.KEY.elder, elderInput.value.trim());
+  });
+
+  /* ---------- 服务状态 ---------- */
+  (async function health() {
+    try {
+      const st = await App.api("/agent/status");
+      const ok = st && st.ready;
+      $("healthDot").className = "dot-live" + (ok ? "" : " dot-off");
+      $("healthText").textContent = ok ? `就绪 · ${st.tools_count} 个工具` : "未就绪";
+      if (st && st.topology) {
+        $("topoBadge").style.display = "inline-flex";
+        $("topoBadge").textContent = `${st.topology}${st.persistent ? " · 持久化" : " · 内存"}`;
+      }
+    } catch (e) {
+      $("healthDot").className = "dot-live dot-off";
+      $("healthText").textContent = "离线";
+    }
+  })();
+
+  /* ---------- 会话列表 ---------- */
+  function loadConvs() {
+    try { return JSON.parse(localStorage.getItem(CONV_KEY) || "[]"); } catch (e) { return []; }
+  }
+  function saveConvs(list) { localStorage.setItem(CONV_KEY, JSON.stringify(list.slice(0, 40))); }
+
+  function renderConvs() {
+    const list = loadConvs();
+    if (!list.length) {
+      convListEl.innerHTML = '<div class="small muted" style="padding:8px 10px">还没有对话</div>';
+      return;
+    }
+    convListEl.innerHTML = list.map((c) => `
+      <div class="conv-item ${c.id === threadId ? "active" : ""}" data-id="${App.esc(c.id)}">
+        <span class="grow title">${App.esc(c.title || "新对话")}</span>
+        <button class="del" data-del="${App.esc(c.id)}" title="删除">×</button>
+      </div>`).join("");
+  }
+
+  convListEl.addEventListener("click", (e) => {
+    const del = e.target.closest("[data-del]");
+    if (del) {
+      e.stopPropagation();
+      const id = del.dataset.del;
+      saveConvs(loadConvs().filter((c) => c.id !== id));
+      localStorage.removeItem(histKey(id));
+      if (id === threadId) startNewChat();
+      renderConvs();
+      return;
+    }
+    const item = e.target.closest("[data-id]");
+    if (item) openConv(item.dataset.id);
+  });
+
+  function touchConv(tid, title) {
+    const list = loadConvs();
+    const hit = list.find((c) => c.id === tid);
+    if (hit) {
+      if (title) hit.title = title;
+      hit.ts = Date.now();
+    } else {
+      list.unshift({ id: tid, title: title || "新对话", ts: Date.now() });
+    }
+    list.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    saveConvs(list);
+    renderConvs();
+  }
+
+  /* ---------- 消息渲染 ---------- */
+  function avatarHTML(who) {
+    return who === "ai"
+      ? '<div class="avatar">颐</div>'
+      : `<div class="avatar" style="background:linear-gradient(135deg,#94a3b8,#64748b)">${App.esc(App.initials(App.username()))}</div>`;
+  }
+
+  function structuredTags(st) {
+    if (!st) return "";
+    const tags = [];
+    if (st.emergency_flag) tags.push('<span class="badge badge-danger">⚠ 建议立即就医</span>');
+    if (st.risk_level) {
+      const lv = String(st.risk_level);
+      const cls = lv.includes("高") ? "badge-danger" : lv.includes("中") ? "badge-warn" : "badge-ok";
+      tags.push(`<span class="badge ${cls}">风险 ${App.esc(lv)}</span>`);
+    }
+    return tags.length ? `<div class="tags">${tags.join("")}</div>` : "";
+  }
+
+  function addMessage(who, text, opts) {
+    opts = opts || {};
+    const wrap = document.createElement("div");
+    wrap.className = "msg " + (who === "ai" ? "ai" : "user");
+    wrap.innerHTML = `
+      ${avatarHTML(who)}
+      <div class="msg-col">
+        <div class="bubble"></div>
+        <div class="msg-foot"></div>
+      </div>`;
+    const bubble = wrap.querySelector(".bubble");
+    if (opts.html) bubble.innerHTML = text; else bubble.textContent = text;
+
+    const foot = wrap.querySelector(".msg-foot");
+    if (who === "ai" && text) {
+      const copyBtn = document.createElement("button");
+      copyBtn.textContent = "复制";
+      copyBtn.onclick = () => App.copy(bubble.textContent);
+      foot.appendChild(copyBtn);
+
+      if (App.isAdmin() && opts.threadId) {
+        const tr = document.createElement("button");
+        tr.textContent = "查看链路";
+        tr.onclick = () => openTrace(opts.threadId);
+        foot.appendChild(tr);
+      }
+    }
+    inner.appendChild(wrap);
+    scrollBottom();
+    return { wrap, bubble, foot };
+  }
+
+  function scrollBottom() {
+    msgsEl.scrollTop = msgsEl.scrollHeight;
+  }
+
+  function clearMessages() { inner.innerHTML = ""; }
+
+  function renderHero() {
+    inner.innerHTML = `
+      <div class="hero" style="padding-left:0;padding-right:0">
+        <h2>今天想了解点什么？</h2>
+        <p>我可以查已授权老人的档案与健康记录、解读趋势、回答养生问题。</p>
+        <div class="suggests">
+          <button class="suggest" data-q="E001 最近的血压怎么样">
+            <div class="t">查看健康记录</div><div class="d">「E001 最近的血压怎么样」</div>
+          </button>
+          <button class="suggest" data-q="老人血压偏高，饮食上要注意什么">
+            <div class="t">饮食与忌口</div><div class="d">「老人血压偏高，饮食上要注意什么」</div>
+          </button>
+          <button class="suggest" data-q="帮我分析一下最近三个月的健康趋势">
+            <div class="t">趋势分析</div><div class="d">「帮我分析最近三个月的健康趋势」</div>
+          </button>
+          <button class="suggest" data-q="今天天气适合老人出门散步吗">
+            <div class="t">日常照护</div><div class="d">「今天天气适合老人出门散步吗」</div>
+          </button>
+        </div>
+      </div>`;
+    inner.querySelectorAll(".suggest").forEach((b) => {
+      b.onclick = () => { inputEl.value = b.dataset.q; send(); };
+    });
+  }
+
+  /* ---------- 会话切换 ---------- */
+  function persistHistory() {
+    if (!threadId) return;
+    const items = [];
+    inner.querySelectorAll(".msg").forEach((m) => {
+      const isUser = m.classList.contains("user");
+      items.push({
+        role: isUser ? "user" : "ai",
+        text: m.querySelector(".bubble").textContent,
+        ts: Date.now(),
+      });
+    });
+    if (items.length) localStorage.setItem(histKey(threadId), JSON.stringify(items.slice(-60)));
+  }
+
+  function startNewChat() {
+    threadId = "t-" + Math.random().toString(16).slice(2, 14);
+    chatTitle.textContent = "新对话";
+    clearMessages();
+    renderHero();
+    renderConvs();
+  }
+
+  function openConv(tid) {
+    threadId = tid;
+    const conv = loadConvs().find((c) => c.id === tid);
+    chatTitle.textContent = conv ? conv.title : "对话";
+    clearMessages();
+    let items = [];
+    try { items = JSON.parse(localStorage.getItem(histKey(tid)) || "[]"); } catch (e) {}
+    if (!items.length) { renderHero(); }
+    else {
+      items.forEach((it) => addMessage(it.role === "user" ? "user" : "ai", it.text, { threadId: tid }));
+    }
+    renderConvs();
+    scrollBottom();
+  }
+
+  $("newChat").addEventListener("click", startNewChat);
+
+  /* ---------- 上传附件 ---------- */
+  $("attachBtn").addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", async () => {
+    const f = fileInput.files && fileInput.files[0];
+    if (!f) return;
+    const fd = new FormData();
+    fd.append("file", f);
+    try {
+      App.toast("正在解析…");
+      const data = await App.api("/agent/files", { method: "POST", body: fd });
+      attached = data;
+      renderAttach();
+      App.toast(`已解析 ${data.chars} 字`, "ok");
+    } catch (e) {
+      App.toast(e.message || "上传失败", "err");
+    } finally {
+      fileInput.value = "";
+    }
+  });
+
+  function renderAttach() {
+    attachRow.innerHTML = attached
+      ? `<span class="attach-chip">📄 ${App.esc(attached.name)}
+           <button id="rmAttach" title="移除">×</button></span>`
+      : "";
+    if (attached) $("rmAttach").onclick = () => { attached = null; renderAttach(); };
+  }
+
+  /* ---------- 发送 ---------- */
+  function autoGrow() {
+    inputEl.style.height = "auto";
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 180) + "px";
+  }
+  inputEl.addEventListener("input", autoGrow);
+  inputEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+  });
+  sendBtn.addEventListener("click", send);
+
+  async function send() {
+    if (streaming) return;
+    let text = inputEl.value.trim();
+    if (!text && !attached) return;
+    if (attached) {
+      text = (text ? text + "\n\n" : "") + `【已上传报告：${attached.name}】`;
+    }
+
+    if (inner.querySelector(".hero")) clearMessages();
+
+    addMessage("user", text);
+    inputEl.value = "";
+    autoGrow();
+    const payloadFile = attached;
+    attached = null;
+    renderAttach();
+
+    if (!threadId) threadId = "t-" + Math.random().toString(16).slice(2, 14);
+    touchConv(threadId, text.slice(0, 20));
+    chatTitle.textContent = text.slice(0, 22);
+
+    const ai = addMessage("ai", "");
+    ai.bubble.innerHTML = '<span class="dots"><i></i><i></i><i></i></span>';
+    const holder = ai.wrap.querySelector(".msg-col");
+
+    const statusEl = document.createElement("div");
+    statusEl.className = "status-line";
+    statusEl.innerHTML = '<span class="dot-live"></span><span>正在理解你的问题…</span>';
+    holder.appendChild(statusEl);
+
+    // ---- 思考过程面板（实时填充）----
+    const traceEvents = [];
+    const thinkEl = document.createElement("div");
+    thinkEl.className = "think open";
+    thinkEl.innerHTML = `
+      <button class="think-head" type="button">
+        <span>🧠</span><span class="t">思考过程</span>
+        <span class="m">等待第一步…</span><span class="chev">▾</span>
+      </button>
+      <div class="think-body"></div>`;
+    thinkEl.querySelector(".think-head").onclick = () => thinkEl.classList.toggle("open");
+    holder.appendChild(thinkEl);
+
+    const usageEl = document.createElement("div");
+    usageEl.className = "token-line";
+    holder.appendChild(usageEl);
+
+    function renderThink() {
+      const steps = App.buildTraceSteps(traceEvents);
+      const u = App.sumUsage(traceEvents);
+      thinkEl.querySelector(".m").textContent = steps.length
+        ? `${steps.length} 步 · ${u.calls} 次模型调用 · ${App.fmtTokens(u.input)}/${App.fmtTokens(u.output)} tokens · ${App.fmtCost(u.cost)}`
+        : "等待第一步…";
+      thinkEl.querySelector(".think-body").innerHTML = App.renderTrace(traceEvents);
+    }
+
+    streaming = true;
+    sendBtn.disabled = true;
+    stopBtn.classList.remove("hidden");
+    abortCtrl = new AbortController();
+    let answer = "";
+    let structured = null;
+    let finalUsage = null;
+
+    try {
+      await App.streamChat(
+        {
+          message: text,
+          thread_id: threadId,
+          elder_id: (elderInput.value || "").trim() || null,
+          identity_id: App.getIdentity() || null,
+        },
+        {
+          onEvent: (ev, data) => {
+            if (ev === "phase") {
+              const label = (data && data.label) || "处理中…";
+              statusEl.querySelector("span:last-child").textContent = label;
+            } else if (ev === "event") {
+              traceEvents.push(data);
+              renderThink();
+            } else if (ev === "final") {
+              answer = (data && data.answer) || "";
+              structured = (data && data.structured) || null;
+              finalUsage = (data && data.usage) || null;
+              if (data && data.thread_id) threadId = data.thread_id;
+            } else if (ev === "error") {
+              answer = "（" + ((data && data.detail) || "服务暂时不可用") + "）";
+            }
+          },
+        },
+        { signal: abortCtrl.signal }
+      );
+    } catch (e) {
+      if (e.name === "AbortError") answer = answer || "（已中断，可点「续跑」从断点继续）";
+      else answer = answer || ("请求失败：" + (e.message || "网络异常"));
+    }
+
+    statusEl.remove();
+    ai.bubble.textContent = answer || "（本轮没有返回内容，请换个问法重试）";
+    if (structured) ai.bubble.insertAdjacentHTML("afterend", structuredTags(structured));
+    ai.bubble.classList.remove("cursor");
+
+    // 思考面板收尾：没收到任何事件就把面板藏起来
+    renderThink();
+    if (!traceEvents.length) thinkEl.remove();
+
+    // token 用量：优先用服务端汇总（权威），没有就用事件累加
+    const acc = App.sumUsage(traceEvents);
+    const shown = finalUsage
+      ? App.usageLine({
+          calls: finalUsage.calls,
+          input: finalUsage.input_tokens,
+          output: finalUsage.output_tokens,
+          cached: finalUsage.cache_read,
+          cost: finalUsage.cost_yuan,
+        })
+      : App.usageLine(acc);
+    usageEl.innerHTML = shown ? "📊 " + shown : "";
+    if (!shown) usageEl.remove();
+
+    if (answer) {
+      const copyBtn = document.createElement("button");
+      copyBtn.textContent = "复制";
+      copyBtn.onclick = () => App.copy(ai.bubble.textContent);
+      ai.foot.appendChild(copyBtn);
+      if (App.isAdmin()) {
+        const tr = document.createElement("button");
+        tr.textContent = "查看链路";
+        tr.onclick = () => openTrace(threadId);
+        ai.foot.appendChild(tr);
+        const rs = document.createElement("button");
+        rs.textContent = "续跑";
+        rs.onclick = () => resume(threadId);
+        ai.foot.appendChild(rs);
+      }
+    }
+
+    streaming = false;
+    sendBtn.disabled = false;
+    stopBtn.classList.add("hidden");
+    abortCtrl = null;
+    persistHistory();
+    scrollBottom();
+  }
+
+  /* ---------- 中断 / 续跑 ---------- */
+  stopBtn.addEventListener("click", async () => {
+    if (!threadId) return;
+    try {
+      await App.api(`/agent/interrupt/${encodeURIComponent(threadId)}`, { method: "POST" });
+      App.toast("已发送中断标记，下一个节点会停下", "warn");
+      if (abortCtrl) abortCtrl.abort();
+    } catch (e) {
+      App.toast(e.message || "中断失败", "err");
+    }
+  });
+
+  async function resume(tid) {
+    try {
+      App.toast("正在从断点续跑…");
+      const data = await App.api("/agent/resume", { method: "POST", body: { thread_id: tid } });
+      if (data && data.answer) {
+        addMessage("ai", data.answer, { threadId: tid });
+        persistHistory();
+        App.toast("续跑完成", "ok");
+      }
+    } catch (e) {
+      if (e.status === 404) App.toast("该版本后端还没有 /agent/resume", "warn");
+      else App.toast(e.message || "续跑失败", "err");
+    }
+  }
+
+  /* ---------- 抽屉：技能 / 记忆 / 链路 ---------- */
+  function openDrawer(title, sub) {
+    drawerTitle.textContent = title;
+    drawerSub.textContent = sub || "";
+    drawerBody.innerHTML = '<div class="empty"><span class="spinner spinner-dark"></span></div>';
+    overlay.classList.add("show");
+    drawer.classList.add("show");
+  }
+  function closeDrawer() {
+    overlay.classList.remove("show");
+    drawer.classList.remove("show");
+  }
+  overlay.addEventListener("click", closeDrawer);
+  $("drawerClose").addEventListener("click", closeDrawer);
+
+  $("openSkills").addEventListener("click", async () => {
+    openDrawer("技能", "启用后会在相关话题自动生效");
+    try {
+      const data = await App.api("/skills");
+      const items = (data && data.items) || [];
+      if (!items.length) {
+        drawerBody.innerHTML = '<div class="empty">还没有可用技能</div>';
+        return;
+      }
+      drawerBody.innerHTML = items.map((s) => `
+        <div class="skill-item">
+          <div class="row-between">
+            <div>
+              <div style="font-weight:600;font-size:13.5px">${App.esc(s.name || s.id)}</div>
+              <div class="small muted" style="margin-top:2px">${App.esc(s.description || s.summary || "")}</div>
+            </div>
+            <button class="btn btn-sm ${s.enabled ? "" : "btn-primary"}"
+                    data-skill="${App.esc(s.id)}" data-on="${s.enabled ? "0" : "1"}">
+              ${s.enabled ? "停用" : "启用"}
+            </button>
+          </div>
+          <div class="row small muted" style="margin-top:8px;gap:12px">
+            <span>使用 ${s.use_count || 0} 次</span>
+            <span>${s.success_rate == null ? "暂无反馈" : "好评率 " + Math.round(s.success_rate * 100) + "%"}</span>
+            ${s.enabled && s.auto ? '<span class="badge badge-brand">常开</span>' : ""}
+          </div>
+        </div>`).join("");
+
+      drawerBody.querySelectorAll("[data-skill]").forEach((btn) => {
+        btn.onclick = async () => {
+          const id = btn.dataset.skill;
+          const on = btn.dataset.on === "1";
+          try {
+            await App.api(`/skills/${encodeURIComponent(id)}${on ? "/enable" : ""}`,
+              { method: on ? "POST" : "DELETE" });
+            App.toast(on ? "已启用" : "已停用", "ok");
+            $("openSkills").click();
+          } catch (e) { App.toast(e.message || "操作失败", "err"); }
+        };
+      });
+    } catch (e) {
+      drawerBody.innerHTML = `<div class="empty">加载失败：${App.esc(e.message || "未知错误")}</div>`;
+    }
+  });
+
+  $("openMemory").addEventListener("click", async () => {
+    openDrawer("我的长期记忆", "只有你自己能看到，可随时清空");
+    try {
+      const data = await App.api("/agent/memory");
+      const items = (data && data.items) || [];
+      const clear = `<div class="row-between" style="margin-bottom:12px">
+          <span class="small muted">共 ${items.length} 条</span>
+          <button class="btn btn-sm btn-danger" id="clearMem">清空全部</button>
+        </div>`;
+      if (!items.length) {
+        drawerBody.innerHTML = clear + '<div class="empty">还没有沉淀记忆，多聊几轮后会自动生成</div>';
+      } else {
+        drawerBody.innerHTML = clear + items.map((m) => `
+          <div class="mem-item">
+            <div class="row" style="gap:8px;margin-bottom:4px">
+              <span class="badge badge-brand">${App.esc(m.layer || "memory")}</span>
+              <span class="small muted">${App.esc(m.category || "")}</span>
+              ${m.active === false ? '<span class="badge">已失效</span>' : ""}
+            </div>
+            <div style="font-size:13.5px">${App.esc(m.content || "")}</div>
+            <div class="small muted" style="margin-top:4px">
+              重要度 ${(m.importance ?? 0).toFixed ? m.importance.toFixed(2) : m.importance}
+              · 命中 ${m.hit_count || 0} 次
+            </div>
+          </div>`).join("");
+      }
+      const clearBtn = $("clearMem");
+      if (clearBtn) clearBtn.onclick = async () => {
+        if (!confirm("确定清空全部长期记忆？此操作不可撤销。")) return;
+        try {
+          await App.api("/agent/memory", { method: "DELETE" });
+          App.toast("已清空", "ok");
+          $("openMemory").click();
+        } catch (e) { App.toast(e.message || "清空失败", "err"); }
+      };
+    } catch (e) {
+      drawerBody.innerHTML = `<div class="empty">加载失败：${App.esc(e.message || "未知错误")}</div>`;
+    }
+  });
+
+  async function openTrace(tid) {
+    openDrawer("本轮执行链路", "thread " + tid);
+    try {
+      const data = await App.api(`/agent/trace/${encodeURIComponent(tid)}`);
+      const events = (data && data.events) || [];
+      const steps = (data && data.steps) || [];
+      if (events.length) {
+        const u = App.sumUsage(events);
+        drawerBody.innerHTML = `
+          <div class="token-line" style="margin:0 0 10px">📊 ${App.usageLine(u)}</div>
+          <div class="think open" style="background:transparent;border:none">
+            <div class="think-body" style="display:block;padding:0;border:none">${App.renderTrace(events)}</div>
+          </div>
+          <details style="margin-top:12px">
+            <summary class="small muted" style="cursor:pointer">原始事件 JSON（${events.length} 条）</summary>
+            <pre class="code" style="margin-top:8px">${App.esc(JSON.stringify(events, null, 2))}</pre>
+          </details>`;
+      } else if (steps.length) {
+        drawerBody.innerHTML = `<div class="small muted" style="margin-bottom:8px">共 ${steps.length} 个 checkpoint 步骤（该拓扑没有事件流）</div>
+          <div class="tl">${steps.map((s) => `<div class="tl-item">
+              <div class="tl-head"><span class="badge">step ${s.step}</span>
+                <strong>${App.esc(s.node || "-")}</strong>
+                <span class="muted small">消息 ${s.messages_total ?? "-"}</span></div>
+            </div>`).join("")}</div>`;
+      } else {
+        drawerBody.innerHTML = '<div class="empty">这个会话还没有产生链路事件</div>';
+      }
+    } catch (e) {
+      drawerBody.innerHTML = `<div class="empty">读取链路失败：${App.esc(e.message || "")}</div>`;
+    }
+  }
+
+  /* ---------- 初始化 ---------- */
+  startNewChat();
+  renderConvs();
+  if (App.isAdmin()) $("sideSub").textContent = "管理员 · Elder Care Agent";
+})();
+</script>
+</body>
+</html>

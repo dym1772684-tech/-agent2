@@ -1,0 +1,7 @@
+[1] life tools: ['calculator', 'get_real_weather']
+[1] calculator = 3.0 → OK
+[2] elder tools: ['query_elder_profile', 'query_health_records']
+[2] 无令牌 → code = 403 → OK(拒绝)
+[3] 伪造令牌 → code = 403 → OK(拒绝)
+[4] 合法 admin 令牌 → {"code": 0, "data": {"tool": "query_elder_profile", "result": "档案里没有该老人的记录"}}
+[5] 越权令牌 → code = 403 → OK(拦截)

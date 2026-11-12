@@ -1,0 +1,37 @@
+# ===================== 依赖 / 缓存 =====================
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/node_modules/
+
+# ===================== 本地密钥 / 环境 =====================
+# 容器改用 compose env 注入，绝不把密钥烤进镜像
+**/key.env
+**/mysql.env
+**/.env
+!.env.example
+!**/key.env.example
+!**/mysql.env.example
+
+# ===================== 大模型权重 =====================
+# 运行时从 HF 镜像源下载，不进镜像、不进仓库
+allagent2/rag/models/
+allagent2/rag/chroma_db/
+**/chroma_db/
+
+# ===================== 无关兄弟项目 / 杂项 =====================
+# 构建上下文在练手agent/，仅保留 fastap2 + allagent2 + Docker 文件
+/allagent/
+/fastap/
+/golang/
+/mcpuses/
+/brute.html
+/graph.png
+/ft.py
+/ft2.py
+/test.py
+/go.mod
+
+# ===================== 文档 / 测试（减小上下文）=====================
+**/*.md
+tests/

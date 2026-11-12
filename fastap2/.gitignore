@@ -1,0 +1,15 @@
+# 【安全】密钥与产物永不入库
+core/key.env
+database/mysql.env
+*.env
+!.env.example
+!core/key.env.example
+!database/mysql.env.example
+
+__pycache__/
+*.pyc
+logs/
+uvicorn.log
+uvicorn.err
+*.db
+.venv/

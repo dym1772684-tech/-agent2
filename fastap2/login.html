@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>登录 · 颐养智能体</title>
+<link rel="stylesheet" href="/static/app.css" />
+<style>
+  .tip { font-size: 12.5px; color: var(--text-3); margin-top: 14px; line-height: 1.7; }
+  .err { color: var(--danger); font-size: 12.5px; min-height: 18px; }
+  .switch-line { text-align: center; font-size: 12.5px; color: var(--text-3); margin-top: 18px; }
+</style>
+</head>
+<body>
+<div class="login-wrap">
+  <!-- 左：品牌区 -->
+  <aside class="login-brand">
+    <div class="brand-row">
+      <div class="brand-mark">颐</div>
+      <div>
+        <div style="font-weight:650;font-size:15px;letter-spacing:.02em">颐养智能体</div>
+        <div style="font-size:12px;opacity:.75">Elder Care Agent Platform</div>
+      </div>
+    </div>
+
+    <div style="position:relative">
+      <h1>把「我爸妈最近<br/>怎么样」问清楚</h1>
+      <p style="margin-top:14px">
+        面向居家养老的对话式助手：查档案、看健康趋势、问养生知识，
+        所有回答都在你被授权的范围内。
+      </p>
+
+      <div class="feature-list" style="margin-top:34px">
+        <div class="feature-item">
+          <div class="feature-dot">🛡</div>
+          <div>
+            <div style="font-weight:600;font-size:13.5px">零信任准入</div>
+            <div style="font-size:12.5px;opacity:.78">七道闸在模型之前拦住越权，非法请求零 token 消耗</div>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot">🧠</div>
+          <div>
+            <div style="font-weight:600;font-size:13.5px">四层长期记忆</div>
+            <div style="font-size:12.5px;opacity:.78">记住老人忌口、用药与偏好，跨会话延续</div>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot">📚</div>
+          <div>
+            <div style="font-weight:600;font-size:13.5px">三路召回 + 重排</div>
+            <div style="font-size:12.5px;opacity:.78">词法、向量、HyDE 融合，答案带来源</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="position:relative;font-size:12px;opacity:.6">
+      FastAPI · LangGraph · MCP · Chroma
+    </div>
+  </aside>
+
+  <!-- 右：表单区 -->
+  <main class="login-form-side">
+    <div class="login-card">
+      <h2 style="font-size:22px">欢迎回来</h2>
+      <p class="muted" style="margin:6px 0 22px;font-size:13px">登录后即可开始对话；管理员可进入管理后台。</p>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="login">登录</button>
+        <button class="tab" data-tab="register">注册</button>
+      </div>
+
+      <form id="form" autocomplete="on">
+        <div class="col" style="gap:14px">
+          <div class="field">
+            <label for="username">用户名</label>
+            <input class="input" id="username" name="username" placeholder="请输入用户名" required />
+          </div>
+          <div class="field">
+            <label for="password">密码</label>
+            <input class="input" id="password" name="password" type="password" placeholder="请输入密码" required />
+          </div>
+          <div class="err" id="err"></div>
+          <button class="btn btn-primary btn-block" id="submit" type="submit" style="height:42px">
+            登录
+          </button>
+        </div>
+      </form>
+
+      <div class="tip">
+        <div>· 测试账号：<span class="mono">testuser01 / test123456</span>（普通用户）</div>
+        <div>· 管理员账号用 <span class="mono">create_admin.py</span> 创建后登录，会自动进入管理后台</div>
+      </div>
+
+      <div class="switch-line" id="switchLine"></div>
+    </div>
+  </main>
+</div>
+
+<script src="/static/common.js"></script>
+<script>
+(function () {
+  const form = document.getElementById("form");
+  const usernameEl = document.getElementById("username");
+  const passwordEl = document.getElementById("password");
+  const errEl = document.getElementById("err");
+  const submitBtn = document.getElementById("submit");
+  const tabs = document.querySelectorAll(".tab");
+  const switchLine = document.getElementById("switchLine");
+
+  let mode = "login";
+  let busy = false;
+
+  // 已登录就直接进去，别让用户重复登录
+  if (App.getToken()) {
+    location.replace(App.isAdmin() ? "/admin" : "/");
+    return;
+  }
+
+  function setMode(next) {
+    mode = next;
+    tabs.forEach((t) => t.classList.toggle("active", t.dataset.tab === next));
+    submitBtn.textContent = next === "login" ? "登录" : "注册账号";
+    errEl.textContent = "";
+    switchLine.innerHTML = next === "login"
+      ? '还没有账号？<a href="#" data-goto="register">立即注册</a>'
+      : '已有账号？<a href="#" data-goto="login">去登录</a>';
+  }
+
+  tabs.forEach((t) => t.addEventListener("click", () => setMode(t.dataset.tab)));
+  switchLine.addEventListener("click", (e) => {
+    const a = e.target.closest("[data-goto]");
+    if (!a) return;
+    e.preventDefault();
+    setMode(a.dataset.goto);
+  });
+  setMode("login");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (busy) return;
+    const username = usernameEl.value.trim();
+    const password = passwordEl.value;
+    if (!username || !password) { errEl.textContent = "请填写用户名和密码"; return; }
+
+    busy = true;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner"></span>';
+    errEl.textContent = "";
+
+    try {
+      if (mode === "register") {
+        await App.api("/register", { method: "POST", body: { username, password } });
+        App.toast("注册成功，请登录", "ok");
+        setMode("login");
+        passwordEl.focus();
+        return;
+      }
+
+      const data = await App.api("/login", { method: "POST", body: { username, password } });
+      App.saveSession(data, username);
+      App.toast("登录成功", "ok");
+
+      const next = new URLSearchParams(location.search).get("next");
+      const target = next && next.startsWith("/") ? next
+        : (App.isAdmin() ? "/admin" : "/");
+      setTimeout(() => location.replace(target), 260);
+    } catch (ex) {
+      errEl.textContent = ex.message || "操作失败，请重试";
+    } finally {
+      busy = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = mode === "login" ? "登录" : "注册账号";
+    }
+  });
+})();
+</script>
+</body>
+</html>
